@@ -90,5 +90,27 @@ subgroup_nonIDSE <- dataset[dataset$program!=c('IDSE (master)', 'Data Science Ce
 subgroup_male <- dataset[dataset$gender=='Male',] 
 subgroup_female <- dataset[dataset$gender=='Female',] 
 
+######################################################################################
+## Github Condifence based on gender
 
+library(ggplot2)
 
+#this graph shows a break down of expertise based on the gender of students. as it can be seen, unfortunately female students have none or a little confidence in using Github.
+github.conf <- ggplot(dataset, aes(conf_github))
+github.conf + geom_bar(aes(fill = gender) , position = "fill") +
+  labs(title = "GitHub", x = "Confidence Level", y = "percent of students")
+
+github.conf + geom_bar(aes(fill = gender)) +
+  labs(title = "GitHub", x = "Confidence Level", y = "Number of of students")
+
+## Heatmap
+library(reshape)
+
+subgroup_heatmap.m <- melt(subgroup_heatmap)
+
+ggplot(subgroup_heatmap.m, aes(program, variable))+ 
+  geom_tile(aes(fill = value), colour = "white")
+        
+        
+        
+        
