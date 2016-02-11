@@ -111,7 +111,9 @@ survey = dataset
 wl_program = ggplot(survey,aes(program))+
   geom_bar(aes(fill = waitlist))+
   theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))+
-  ggtitle("The Enrollment Status vs Program")
+  ggtitle("The Enrollment Status vs Program") +
+  xlab("Program")+
+  ylab("Number of students")
 wl_program
 ```
 
@@ -122,12 +124,18 @@ All the Data Science students are registered and a large amount of Stat students
 survey$Skills = rowSums(survey[,4:23])
 num_of_skills_pro = ggplot(survey, aes(Skills,fill=program))+
   geom_histogram(binwidth=1)+
-  ggtitle("Number of Tools vs Program")
+  ggtitle("Histogram A: Number of Tools Each Student Uses, Breakdown by Program") +
+  scale_fill_brewer(palette="Set2")+
+  xlab("Number of Skills A Student Has")+
+  ylab("Number of students")
 num_of_skills_pro
 
 num_of_skills_gen = ggplot(survey, aes(Skills,fill=gender))+
   geom_histogram(binwidth=1)+
-  ggtitle("Number of Tools vs Gender")
+  ggtitle("Histogram B: Number of Tools Each Student Uses, Breakdown by Gender")+
+  scale_fill_brewer(palette="Set2")+
+  xlab("Number of Skills A Student Has")+
+  ylab("Number of students")
 num_of_skills_gen
 ```
 
