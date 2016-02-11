@@ -1,0 +1,159 @@
+############################
+## EDAV PROJECT ONE
+## THE CLASS
+## 
+## Shenghan Yu
+############################
+
+###########################################################################################
+
+setwd("~/GitHub/ExploratoryDataAnalysis")
+require(xlsx)
+library(ggplot2)
+library(dummies)
+
+# import raw data
+raw_data <- read.xlsx("Survey.xlsx", sheetName = "Form Responses 1")
+
+# This is the dataset we use in the following 
+dataset <- raw_data
+
+###########################################################################################
+## 1.Gender
+dataset$gender[raw_data$What.is.your.preferred.gender.pronoun.=="he/him"] = "Male"
+dataset$gender[raw_data$What.is.your.preferred.gender.pronoun.=="she/her"] = "Female"
+dataset$gender[raw_data$What.is.your.preferred.gender.pronoun.=="doesn't matter"] = "Declined to state"
+dataset$gender[is.na(raw_data$What.is.your.preferred.gender.pronoun.)] = "Declined to state"
+dataset$gender <- factor(dataset$gender)
+
+## 2.Program
+dataset$program <- raw_data$Program
+dataset$program[raw_data$Program == 'Ms in ds'] = 'IDSE (master)'
+dataset$program[raw_data$Program == 'MSDS'] = 'IDSE (master)'
+dataset$program[raw_data$Program == 'Data Science'] = 'IDSE (master)'
+dataset$program[raw_data$Program == 'Applied Math'] = 'Other masters'
+dataset$program[raw_data$Program == 'PhD Biomedical Informatics'] = 'Ph.D.'
+dataset$program[raw_data$Program == 'QMSS'] = 'QMSS (master)'
+dataset$program <- factor(dataset$program)
+
+## 3.Waitlist
+dataset$waitlist = factor(raw_data$Are.you.on.the.waiting.list.)
+
+## 4.skill Dummies
+# Get the skills for each samples.
+skill_list <- strsplit(as.character(raw_data$Experiences.with.tools), ", ")
+
+# Create a list for all skill names
+skill_name <- vector(mode="character", length=0)
+
+# Create dummies for skills, loop through samples and skills
+for (sample_index in 1:nrow(raw_data)) {
+  
+  for (skill in skill_list[[sample_index]]) {
+    
+    # append the names, create a new column if it is a new skill
+    if (!is.element(skill, skill_name)) {
+      skill_name = append(skill_name,skill)
+      dataset[,skill] = 0
+    }
+    
+    dataset[sample_index,skill] = 1
+  }
+  
+}
+
+## 5 text editor
+dataset$text_editor <- raw_data$What.code.text.editor.do.you.use.most.
+
+## 6. Confidence
+dataset$conf_r_manipulation <- factor(dataset$Programming.and.Analytical.Experiences..R..data.manipulation.and.modeling.,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE) 
+dataset$conf_r_graphic <- factor(dataset$Programming.and.Analytical.Experiences..R..graphic.basics..base..lattice..grid.etc....  ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+dataset$conf_r_multivariate <- factor(dataset$Programming.and.Analytical.Experiences..R..advanced..multivariate.data.analysis..e.g..spatiotemporal.data..visualization.and.modeling..    ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+dataset$conf_r_markdown <- factor(dataset$Programming.and.Analytical.Experiences..Reproducible.documentation.with.R..e.g..R.Markdown..  ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+
+dataset$conf_github <- factor(dataset$Programming.and.Analytical.Experiences..Github.,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+dataset$conf_matlab <- factor(dataset$Programming.and.Analytical.Experiences..Matlab..data.manipulation..analysis..visualization.and.modeling.  ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+
+## Drop old columns
+dataset <- dataset[,-(1:38)]
+
+##################################################################################################
+
+## Making subgroups
+
+subgroup_R <- dataset[dataset$R==1,] 
+
+subgroup_IDSE <- dataset[dataset$program=='IDSE (master)',] 
+subgroup_nonIDSE <- dataset[dataset$program!='IDSE (master)',] 
+
+subgroup_male <- dataset[dataset$gender=='Male',] 
+subgroup_female <- dataset[dataset$gender=='Female',]
+######################################################################################
+
+
+### word cloud of top 15 popular tools of the entire class
+library(wordcloud)
+words = colnames(dataset)[4:23]
+words[9] = "Google Drive"
+words[10] = "Regular Expressions"
+words[12] = "Shell"
+freq = colSums(dataset[,4:23])
+
+# color sets to green
+pal2 <- brewer.pal(9,"Greens")
+wordcloud(words, freq, scale=c(4,.2), max.words = 15, random.order=FALSE, rot.per=0.1, colors=pal2, main="Title", use.r.layout=TRUE)
+######################################################################################
+
+
+### word cloud of top 10 popular tools between males (left) and females (right)
+freq.m = colSums(subgroup_male[,4:23])
+freq.f = colSums(subgroup_female[,4:23])
+par(mfrow = c(1,2))
+wordcloud(words, freq.m, scale=c(3,.2), max.words = 10, random.order=FALSE, rot.per=.1, colors=pal2, main="Title", use.r.layout=TRUE)
+wordcloud(words, freq.f, scale=c(3,.2), max.words = 10, random.order=FALSE, rot.per=.1, colors=pal2, main="Title", use.r.layout=TRUE)
+######################################################################################
+
+
+### bubble chart of four R skills' confidence level
+## for display reason, please use the pdf I saved
+## install.packages("gridExtra")    # for lay out the six bubble charts
+library(gridExtra)
+conf_r = dataset[,25:28]
+p = list()
+ind = 1
+for(i in 1:3){
+  for(j in (i+1):4){
+    conf_r_subset = as.data.frame(table(conf_r[,c(i,j)]))
+    p[[ind]] = ggplot(conf_r_subset, aes_string(x=colnames(conf_r_subset)[1], y=colnames(conf_r_subset)[2], size=colnames(conf_r_subset)[3])) + geom_point() + scale_x_discrete(limits=c("None","A little","Confident","Expert")) + scale_y_discrete(limits=c("None","A little","Confident","Expert")) + scale_size_area(max_size = 10)
+    ind = ind + 1
+  }
+}
+do.call(grid.arrange,p)
+######################################################################################
+
+
+## clean text_editor data
+dataset$text_editor = as.character(dataset$text_editor)
+dataset$text_editor[dataset$text_editor %in% c("sublime text 2", "sublime text", "Sublime Text 2", "Sublime Text!", "Sublime Text", "sublime", "Sublime 2")] = "Sublime"
+dataset$text_editor[dataset$text_editor %in% c("textwrangler", "textWrangler")] = "Text Wrangler"
+dataset$text_editor[dataset$text_editor %in% c("ipynb", "Ipython", "python", "IPython Notebook")] = "IPython"
+dataset$text_editor[dataset$text_editor == "I used jupyter last semester"] = "jupyter"
+dataset$text_editor[dataset$text_editor == "haven't used any"] = "None"
+dataset$text_editor[dataset$text_editor %in% c("Atom/Sublime text", "Any (20 years C++/Java experience)", "Sublime Text / Eclipse", "Webstorm, pycharm")] = "Two or more"
+
+### Histgram of text editors
+ggplot(dataset, aes(x=reorder(text_editor, table(text_editor)[text_editor]))) + geom_bar() + coord_flip() + xlab("text editor") + ggtitle("Choices of Text Editors")
+######################################################################################
+
+
+### Histgram of gender and text editors
+library(grid)
+library(scales)
+dataset_gender = dataset[dataset$gender != "Declined to state",]
+perc.text.gender = as.data.frame(prop.table(table(dataset_gender$text_editor, dataset_gender$gender)))
+perc.text.gender = perc.text.gender[perc.text.gender$Freq != 0,]
+colnames(perc.text.gender) = c("text_editor", "gender", "percentage")
+ggplot(perc.text.gender, aes(x=gender, y=percentage, fill=text_editor)) + geom_bar(position = "fill", stat = "identity") + scale_y_continuous(labels=percent_format()) + coord_flip() + theme(legend.position="bottom", legend.key.size=unit(0.3,"cm"), legend.text = element_text(size=8), legend.title = element_text(size=8, face="bold")) + guides(fill=guide_legend(nrow=2,byrow=TRUE)) + ggtitle("Choices of Text Editors within each Gender")
+######################################################################################
+
+
