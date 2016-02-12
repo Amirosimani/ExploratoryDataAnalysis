@@ -99,6 +99,10 @@ subgroup_female <- dataset[dataset$gender=='Female',]
 ```
 
 
+
+
+
+
 ```{r,echo=FALSE, message=FALSE, warning=FALSE}
 ### word cloud of top 15 popular tools of the entire class
 library(wordcloud)
@@ -109,7 +113,7 @@ words[12] = "Shell"
 freq = colSums(dataset[,4:23])
 
 # color sets to green
-pal2 <- brewer.pal(9,"Greens")
+pal2 <- brewer.pal(8,"Dark2")
 wordcloud(words, freq, scale=c(4,.2), max.words = 15, random.order=FALSE, rot.per=0.1, colors=pal2, main="Title", use.r.layout=TRUE)
 ```
 
@@ -126,12 +130,13 @@ wordcloud(words, freq.f, scale=c(3,.2), max.words = 10, random.order=FALSE, rot.
 
 These two graphs shows the word cloud of top 10 popular tools between males (left) and females (right). We can see that Python, R, and  RStudio are still the most popular ones in males, while Python is less popular in females.
 
-```{r,echo=FALSE, message=FALSE, warning=FALSE, fig.show="hide"}
+```{r,echo=FALSE, message=FALSE, warning=FALSE, }
 ### bubble chart of four R skills' confidence level
 ## for display reason, please use the pdf I saved
 ## install.packages("gridExtra")    # for lay out the six bubble charts
 library(gridExtra)
 conf_r = dataset[,25:28]
+colnames(conf_r) = c("data manipulation and modeling","graphic basics", "advanced", "R Markdown")
 p = list()
 ind = 1
 for(i in 1:3){
@@ -168,7 +173,11 @@ dataset_gender = dataset[dataset$gender != "Declined to state",]
 perc.text.gender = as.data.frame(prop.table(table(dataset_gender$text_editor, dataset_gender$gender)))
 perc.text.gender = perc.text.gender[perc.text.gender$Freq != 0,]
 colnames(perc.text.gender) = c("text_editor", "gender", "percentage")
-ggplot(perc.text.gender, aes(x=gender, y=percentage, fill=text_editor)) + geom_bar(position = "fill", stat = "identity") + scale_y_continuous(labels=percent_format()) + coord_flip() + theme(legend.position="bottom", legend.key.size=unit(0.3,"cm"), legend.text = element_text(size=8), legend.title = element_text(size=8, face="bold")) + guides(fill=guide_legend(nrow=2,byrow=TRUE)) + ggtitle("Choices of Text Editors within each Gender")
+
+cols <- colorRampPalette(brewer.pal(8, "Set2"))
+myPal <- cols(13)
+
+ggplot(perc.text.gender, aes(x=gender, y=percentage, fill=text_editor)) + geom_bar(position = "fill", stat = "identity",colour="white") + scale_y_continuous(labels=percent_format()) + coord_flip() + theme(legend.position="bottom", legend.key.size=unit(0.3,"cm"), legend.text = element_text(size=8), legend.title = element_text(size=8, face="bold")) + guides(fill=guide_legend(nrow=2,byrow=TRUE)) + ggtitle("Choices of Text Editors within each Gender") + scale_fill_manual(values = myPal)
 ```
 
 RStudio is still the most popular text editors in males and females. However, the percentages of males who use Sublime and Xcode are significant larger than females. The rest text editors are basically of the same percentages.
