@@ -1,0 +1,345 @@
+---
+title: "W4701 Exploritary Data Analysis and Visualization Team Project 1"
+author: "Amirhossein Imani, Sergey Ulyanenko,Yimei Liu, Shenghan Yu, Qitong Liu, Xuyan Xiao"
+date: "February 11, 2016"
+output: pdf_document
+---
+\fontfamily{cmr}
+\fontsize{14}{22}
+\selectfont 
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+#setwd("~/GitHub/ExploratoryDataAnalysis")
+setwd('/Users/sergeyulyanenko/Dropbox/Columbia University/1_EDAV W4701/Projects/Project_1/Final submission/')
+
+require(xlsx)
+library(ggplot2)
+library(dummies)
+library(dplyr)
+library(reshape2)
+library(scales)
+
+# import raw data
+raw_data <- read.xlsx("Survey.xlsx", sheetName = "Form Responses 1")
+
+# This is the dataset we use in the following 
+dataset <- raw_data
+
+###########################################################################################
+## 1.Gender
+dataset$gender[raw_data$What.is.your.preferred.gender.pronoun.=="he/him"] = "Male"
+dataset$gender[raw_data$What.is.your.preferred.gender.pronoun.=="she/her"] = "Female"
+dataset$gender[raw_data$What.is.your.preferred.gender.pronoun.=="doesn't matter"] = "Declined to state"
+dataset$gender[is.na(raw_data$What.is.your.preferred.gender.pronoun.)] = "Declined to state"
+dataset$gender <- factor(dataset$gender)
+
+## 2.Program
+dataset$program <- raw_data$Program
+dataset$program[raw_data$Program == 'Ms in ds'] = 'IDSE (master)'
+dataset$program[raw_data$Program == 'MSDS'] = 'IDSE (master)'
+dataset$program[raw_data$Program == 'Data Science'] = 'IDSE (master)'
+dataset$program[raw_data$Program == 'Applied Math'] = 'Other masters'
+dataset$program[raw_data$Program == 'PhD Biomedical Informatics'] = 'Ph.D.'
+dataset$program[raw_data$Program == 'QMSS'] = 'QMSS (master)'
+dataset$program <- factor(dataset$program)
+
+## 3.Waitlist
+dataset$waitlist = factor(raw_data$Are.you.on.the.waiting.list.)
+
+## 4.skill Dummies
+# Get the skills for each samples.
+skill_list <- strsplit(as.character(raw_data$Experiences.with.tools), ", ")
+
+# Create a list for all skill names
+skill_name <- vector(mode="character", length=0)
+
+# Create dummies for skills, loop through samples and skills
+for (sample_index in 1:nrow(raw_data)) {
+  
+  for (skill in skill_list[[sample_index]]) {
+    
+    # append the names, create a new column if it is a new skill
+    if (!is.element(skill, skill_name)) {
+      skill_name = append(skill_name,skill)
+      dataset[,skill] = 0
+    }
+    
+    dataset[sample_index,skill] = 1
+  }
+  
+}
+
+## 5 text editor
+dataset$text_editor <- raw_data$What.code.text.editor.do.you.use.most.
+
+
+## 6. Confidence
+dataset$conf_r_manipulation <- factor(dataset$Programming.and.Analytical.Experiences..R..data.manipulation.and.modeling.,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE) 
+dataset$conf_r_graphic <- factor(dataset$Programming.and.Analytical.Experiences..R..graphic.basics..base..lattice..grid.etc....  ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+dataset$conf_r_multivariate <- factor(dataset$Programming.and.Analytical.Experiences..R..advanced..multivariate.data.analysis..e.g..spatiotemporal.data..visualization.and.modeling..    ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+dataset$conf_r_markdown <- factor(dataset$Programming.and.Analytical.Experiences..Reproducible.documentation.with.R..e.g..R.Markdown..  ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+
+dataset$conf_github <- factor(dataset$Programming.and.Analytical.Experiences..Github.,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+dataset$conf_matlab <- factor(dataset$Programming.and.Analytical.Experiences..Matlab..data.manipulation..analysis..visualization.and.modeling.  ,levels=c('None','A little', 'Confident', 'Expert'), ordered= TRUE)
+
+## Drop old columns
+dataset <- dataset[,-(1:38)]
+
+############################################################################################
+## Making subgroups
+############################################################################################
+
+subgroup_R <- dataset[dataset$R==1,] 
+
+subgroup_IDSE <- dataset[dataset$program==c('IDSE (master)', 'Data Science Certification'),] 
+subgroup_nonIDSE <- dataset[dataset$program!=c('IDSE (master)', 'Data Science Certification'),] 
+
+subgroup_male <- dataset[dataset$gender=='Male',] 
+subgroup_female <- dataset[dataset$gender=='Female',] 
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+######################################################################################
+## The Enrollment Status vs Program
+######################################################################################
+survey = dataset
+
+ggplot(survey,aes(program))+
+  geom_bar(aes(fill = waitlist))+
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))+
+  ggtitle("The Enrollment Status vs Program") +
+  xlab("Program")+
+  ylab("Number of students")+
+  scale_fill_brewer(palette = "Greens")+
+  theme_light()+
+  theme(axis.text.x = element_text(angle=45,hjust=1))
+```
+All the Data Science students are registered and a large amount of Stat students are on the waiting list. We can see a need for visualization course in the STAT department.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+######################################################################################
+## Histogram A: Number of Tools Each Student Uses, Breakdown by Program
+######################################################################################
+survey$Skills = rowSums(survey[,4:23])
+ggplot(survey, aes(Skills,fill=program))+
+  geom_histogram(binwidth=1)+stat_count(geom="text",aes(label=..count..),hjust=-0.5,vjust=1.5)+
+  ggtitle("Hist A: Number of Tools Each Student Uses, by Program") +
+  scale_fill_brewer(palette="Set2")+
+  xlab("Number of Skills A Student Has")+
+  ylab("Number of students")+
+  scale_fill_brewer(palette = "Greens")+
+  theme_light()
+
+######################################################################################
+## "Histogram B: Number of Tools Each Student Uses, Breakdown by Gender
+######################################################################################
+
+ggplot(survey, aes(Skills,fill=gender))+
+  geom_histogram(binwidth=1)+stat_count(geom="text",aes(label=..count..),hjust=-0.5,vjust=2)+
+  ggtitle("Hist B: Number of Tools Each Student Uses, by Gender")+
+  scale_fill_brewer(palette="Set2")+
+  xlab("Number of Skills A Student Has")+
+  ylab("Number of students")+
+  scale_fill_brewer(palette = "Greens")+
+  theme_light()
+```
+
+Histograms A and B: Most students master 6 tools and there are versatile students with more than 12 skills from Data Science, QMSS and other master students. As for gender, the distribution of both male and female students are similar but male students tend to master more tools.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+######################################################################################
+## Tools vs Program vs Gender
+######################################################################################
+survey_copy = survey[survey$gender != "Declined to state",]
+survey_copy[,2] = as.character(survey_copy[,2])
+
+for(i in 1:dim(survey_copy)[1]){
+  if(survey_copy$program[i] %in% c("IDSE (master)","Data Science Certification")==FALSE){
+    survey_copy$program[i] = "Others"
+  }
+}
+
+survey_copy1 = cbind(survey_copy[,2],survey_copy[,1],survey_copy[,4:23])
+names(survey_copy1)[1:2] = c("program","gender")
+tools = survey_copy1%>% group_by(program,gender) %>% summarise_each(funs(sum))
+
+data.m = melt(tools,id.vars = c("program","gender"),
+              variable.name = "tool",value.name = "count")
+
+ggplot(data.m, aes(tool, count)) +   
+  geom_point(aes(color =gender ))+
+  facet_wrap(~program, ncol=3)+coord_flip()+
+  labs(x='',y='')+
+  ggtitle("Tools vs Program vs Gender")+theme_light()+
+  theme(legend.position="bottom")+
+  scale_fill_distiller(palette = "Greens")
+```
+
+For specific tools, we can see that R, Rtudio, Python and google drive are the most popular tools among Data Science stdents while Excel are more popular among other students. Male students tend to master more tools than female students in Data Science MS students even taking into consideration the number of both genders (Male:Female = 44:13).
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+######################################################################################
+## Github Condifence based on gender
+######################################################################################
+
+github.conf <- ggplot(dataset[dataset$gender!='Declined to state',], aes(conf_github))
+github.conf + geom_bar(aes(fill = gender) , position = "fill") +
+  labs(title = "GitHub Condifence, by gender", x = "Confidence Level", y = "Percent of students")+
+  scale_fill_brewer(palette = "Greens")+
+  theme_light()
+
+github.conf + geom_bar(aes(fill = gender)) +
+  labs(title = "GitHub Condifence, by gender", x = "Confidence Level", y = "Number of of students")+
+  scale_fill_brewer(palette = "Greens")+
+  theme_light()
+```
+This graph shows a break down of expertise based on the gender of students. As it can be seen, unfortunately female students have none or a little confidence in using Github.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+######################################################################################
+## Heatmap
+######################################################################################
+
+subgroup_heatmap.m <- melt(subgroup_R)
+
+ggplot(subgroup_heatmap.m, aes(program, variable))+ 
+  geom_tile(aes(fill = value), colour = "white")+
+  labs(title = "HeatMap",x='',y='')+
+  theme(title = element_text(vjust=2),
+        plot.title = element_text(size=14),
+        axis.text.x = element_text(angle=45,hjust=1))+
+  scale_fill_distiller(palette = "Greens")
+```
+The heat map is a graphical representation of tools being used by students in each degree. It gives us a nice and clear way to see all the familiarity of all students with different tools grouped by their degrees in one graph. The brighter a cell is, it means that more students in that degree use the respective tool.
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+######################################################################################
+## Wordcloud
+######################################################################################
+library(wordcloud)
+words = colnames(dataset)[4:23]
+words[9] = "Google Drive"
+words[10] = "Regular Expressions"
+words[12] = "Shell"
+freq = colSums(dataset[,4:23])
+
+# color sets to green
+pal2 <- brewer.pal(9,"Greens")
+wordcloud(words, freq, scale=c(4,.2), max.words = 15, random.order=FALSE, rot.per=0.1, colors=pal2, main="Title", use.r.layout=TRUE)
+```
+
+This graph shows the word cloud of top 15 popular tools of the entire class. Clearly, R, RStudio and Python are the most poplular ones.
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+### word cloud of top 10 popular tools between males (left) and females (right)
+freq.m = colSums(subgroup_male[,4:23])
+freq.f = colSums(subgroup_female[,4:23])
+par(mfrow = c(1,2))
+wordcloud(words, freq.m, scale=c(3,.2), max.words = 10, random.order=FALSE, rot.per=.1, colors=pal2, main="Title", use.r.layout=TRUE)
+wordcloud(words, freq.f, scale=c(3,.2), max.words = 10, random.order=FALSE, rot.per=.1, colors=pal2, main="Title", use.r.layout=TRUE)
+```
+
+These two graphs shows the word cloud of top 10 popular tools between males (left) and females (right). We can see that Python, R, and  RStudio are still the most popular ones in males, while Python is less popular in females.
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE, fig.show="hide"}
+######################################################################################
+### Bubble charts (Hidden)
+######################################################################################
+library(gridExtra)
+conf_r = dataset[,25:28]
+p = list()
+ind = 1
+for(i in 1:3){
+  for(j in (i+1):4){
+    conf_r_subset = as.data.frame(table(conf_r[,c(i,j)]))
+    p[[ind]] = ggplot(conf_r_subset, aes_string(x=colnames(conf_r_subset)[1], y=colnames(conf_r_subset)[2], size=colnames(conf_r_subset)[3])) + geom_point() + scale_x_discrete(limits=c("None","A little","Confident","Expert")) + scale_y_discrete(limits=c("None","A little","Confident","Expert")) + scale_size_area(max_size = 10)
+    ind = ind + 1
+  }
+}
+do.call(grid.arrange,p)
+```
+<!-- 
+######################################################################################
+### Bubble charts
+######################################################################################
+-->
+![Caption for the picture.](3.png)
+
+The size of bubble represents the number of students in that category. Since using R to do data manipulation and modeling is more basic than advanced analysis, most students are confident of the former and know a little of the latter. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+dataset$text_editor = as.character(dataset$text_editor)
+dataset$text_editor[dataset$text_editor %in% c("sublime text 2", "sublime text", "Sublime Text 2", "Sublime Text!", "Sublime Text", "sublime", "Sublime 2")] = "Sublime"
+dataset$text_editor[dataset$text_editor %in% c("textwrangler", "textWrangler")] = "Text Wrangler"
+dataset$text_editor[dataset$text_editor %in% c("ipynb", "Ipython", "python", "IPython Notebook")] = "IPython"
+dataset$text_editor[dataset$text_editor == "I used jupyter last semester"] = "jupyter"
+dataset$text_editor[dataset$text_editor == "haven't used any"] = "None"
+dataset$text_editor[dataset$text_editor %in% c("Atom/Sublime text", "Any (20 years C++/Java experience)", "Sublime Text / Eclipse", "Webstorm, pycharm")] = "Two or more"
+
+######################################################################################
+### Histgram of text editors
+######################################################################################
+ggplot(dataset, aes(x=reorder(text_editor, table(text_editor)[text_editor]))) + geom_bar() +
+  stat_count(geom="text",aes(label=..count..),hjust=-0.5)+coord_flip() + xlab("text editor") +   ggtitle("Histogram: Choices of Text Editors")
+```
+
+This bar graph clearly shows that RStudio is the dominant text editor that are used by most students in the class. The number of its users is over 4 times of the second text editor-Sublime.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+######################################################################################
+### Histgram of gender and text editors
+######################################################################################
+library(grid)
+library(scales)
+dataset_gender = dataset[dataset$gender != "Declined to state",]
+perc.text.gender = as.data.frame(prop.table(table(dataset_gender$text_editor, dataset_gender$gender)))
+perc.text.gender = perc.text.gender[perc.text.gender$Freq != 0,]
+colnames(perc.text.gender) = c("text_editor", "gender", "percentage")
+ggplot(perc.text.gender, aes(x=gender, y=percentage, fill=text_editor)) + geom_bar(position = "fill", stat = "identity") + scale_y_continuous(labels=percent_format()) + coord_flip() + theme(legend.position="bottom", legend.key.size=unit(0.3,"cm"), legend.text = element_text(size=8), legend.title = element_text(size=8, face="bold")) + guides(fill=guide_legend(nrow=2,byrow=TRUE)) + ggtitle("Choices of Text Editors within each Gender")
+```
+
+RStudio is still the most popular text editors in males and females. However, the percentages of males who use Sublime and Xcode are significant larger than females. The rest text editors are basically of the same percentages.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+######################################################################################
+### Histgram of gender and text editors
+######################################################################################
+prexp_group = group_by(dataset[dataset$gender %in% c("Male","Female"),],gender,conf_r_manipulation)
+prexp_sum = summarize(prexp_group,count=n())
+prexp_sum$percent = with(prexp_sum,ave(count,gender,FUN=function(x) x / sum(x)))
+prexp_sum$pos=with(prexp_sum,ave(percent,gender,FUN=function(x) cumsum(x) - 0.5*x))
+ggplot(data=prexp_sum,aes(x=factor(1),y=percent,fill=factor(conf_r_manipulation)))+
+  geom_bar(width=1,stat="identity")+
+  facet_grid(facets=.~gender)+
+  coord_polar(theta="y")+
+  geom_text(aes(x=1.1,y=pos,label=percent(percent)))+
+  ggtitle("R, data manipulation and modeling, by Gender")+
+  xlab('')+ylab('percent')+labs(fill="Experience")+
+  theme(plot.title = element_text(size=20,face="bold"))+
+  scale_fill_brewer(palette = "Greens")+
+  theme_light()+theme(panel.grid=element_blank(),axis.text=element_blank())
+```
+This chart shows student programming expereince in R data manipulation and modeling, expereince category percetage of males and females. This analysis shows that males are a lot less confident in R programming than females, however, there are more males who consider themselfs experts than femals.
+<!-- 
+######################################################################################
+### Data inconsistency for R skillset
+######################################################################################
+-->
+\newpage
+![Caption for the picture.](1.png)
+This chart shows data inconsistency in regards to students who said they did not use the R tool in 'experience with tools' part of the survey, but had said they have a little or more confidence level for either 'R graphic basics', 'R data manipulation and modeling' or 'R advanced' part of the survey. Any combination of 'X' that is not in the first row of the chart raises a red flag on the quality of the data. 
+
+<!-- 
+######################################################################################
+### Experience with tools by Program
+######################################################################################
+-->
+\newpage
+![Caption for the picture.](2.png)
+\newpage
+This chart shows the percentage of students that are experienced with each tool by program. Since the number of students in each program are vastly different, we think the data would be better represented by dividing number of students experienced for a particular tool within each program by the number of students in that program. 
+
+
+
+
